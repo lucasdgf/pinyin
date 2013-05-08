@@ -1,0 +1,188 @@
+\documentclass[11pt, twocolumn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{CJKutf8}
+\usepackage{indentfirst}
+\usepackage{color}
+\usepackage{qtree}
+%Mathematical TeX packages from the AMS
+\usepackage{amssymb,amsmath,amsthm} 
+%geometry (sets margin) 
+\usepackage[margin=1in]{geometry}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\setlength{\columnsep}{20pt}
+
+\def\ci{\perp\!\!\!\perp}
+%=============================================================
+%Redefining the 'section' environment as a 'problem' with dots at the end
+
+
+\makeatletter
+\newenvironment{problem x}{\@startsection
+       {section}
+       {1}
+       {-.2em}
+       {-3.5ex plus -1ex minus -.2ex}
+       {2.3ex plus .2ex}
+       {\pagebreak[3] %basic widow-orphan matching
+       \large\bf\noindent{Problem }
+       }
+       }
+       {%\vspace{1ex}\begin{center} \rule{0.3\linewidth}{.3pt}\end{center}}
+       \begin{center}\large\bf \ldots\ldots\ldots\end{center}}
+\makeatother
+
+
+%=============================================================
+%Fancy-header package to modify header/page numbering 
+%
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\usepackage{framed, color}
+\definecolor{shadecolor}{gray}{0.95}
+\lhead{Lucas Freitas and Cynthia Meng}
+\chead{} 
+\rhead{\thepage} 
+\lfoot{\small Computer Science 187} 
+\cfoot{} 
+\rfoot{\footnotesize Problem Set 9} 
+\renewcommand{\headrulewidth}{.3pt} 
+\renewcommand{\footrulewidth}{.3pt}
+\setlength\voffset{-0.25in}
+\setlength\textheight{648pt}
+\setlength\parindent{0pt}
+%=============================================================
+%Contents of problem set
+
+\begin{document}
+
+\title{\text{Pinyin to Hanzi Conversion}\\with Hidden Markov Models}
+\author{Lucas Freitas and Cynthia Meng}
+
+\maketitle
+
+\thispagestyle{empty}
+
+\subsection*{1. Introduction to Pinyin}
+
+The Chinese language is composed entirely of characters, with each character representing generally at least one word. When different characters are combined, different words might also be formed. Before modern technology, characters were written solely with brush strokes. During the 1950s, however, a system called \emph{pinyin} was developed to aid the transcription of Chinese characters into the Latin alphabet. 
+\\\\
+Pinyin proved incredibly useful during the latter half of the century, as it was used to help teach the language to non-native Mandarin speakers, and eventually would be used as the main input method for entering Chinese characters into computers. It is still used today in Chinese language programs around the world, as it is one of the most efficient methods of teaching Chinese to native speakers of Latin-alphabet-based languages, such as English, Spanish, and others.
+\\\\
+As a brief overview of Pinyin (of which a small amount of knowledge will help with the understanding of this project), there are five different tones in Mandarin Chinese, which can be represented by using the tone marks above vowels in the Pinyin of a character (Table 1).
+
+\subsection*{2. Inspiration}
+
+Alhough Pinyin is certainly extremely helpful for visualizing the characters, some problems arise when attempting Pinyin to Hanzi conversion, especially given the breadth and scope of the Chinese language.\\
+
+Both of us have a strong interest in the Chinese language and the relationship between characters and Pinyin, and were interested in implementing a project that would somehow draw these two integral components of the Chinese language together.\\
+
+Inspired by the word segmentation problem set from earlier on in the course, we decided to attempt an implementation of Pinyin to Hanzi conversion, which involves both hempsegmentation and the use of a statistical model.
+
+\begin{table}
+    \begin{centering}
+        \begin{tabular}{|l|l|l|} \hline
+        Tone   & Pinyin & Meaning \\ \hline
+        Flat or level (first)  & m\={a} & mother \\ 
+        Rising (second) & m\'{a} & hemp\\
+        Falling-Rising (third) & m\`{a} & horse\\
+        Falling (fourth) & m\u{a} & scold \\ 
+        Neutral & m{a} & question\\ \hline
+        \end{tabular}
+        \caption{The Mandarin Chinese four tones}
+    \end{centering}
+\end{table}
+
+\subsection*{3. Heterophones}
+
+In Chinese, a given syllable could have up to five different tones (tones 1 to 4 or the neutral tone), each of which could stand for a different character. Especially when a piece of text is presented without tones over each word, it becomes exceedingly difficult to discern which character is the correct one to use. In this case, using context clues is particularly helpful, which our program would need to accommodate. Examples of this phenomenon are in Table 2, with the pinyin words ``hen", ``shi", and ``he".\\
+
+\subsection{Multiple Pronunciations for a Character}
+In addition to the problem of heterophones, there exists also the problem that certain characters can have different pronunciations depending on their contexts. We can see this with the following words:
+
+\begin{CJK}{UTF8}{gbsn}
+\begin{table}
+    \begin{centering}
+        \begin{tabular}{|l|l|l|} \hline
+        Pinyin (no tone)   & Character & Meaning \\ \hline
+        hen  & 恨 & to hate \\ 
+        hen  & 很 & very \\ 
+        shi & 十 & ten\\
+        shi & 是 & to be\\
+        he & 和 & and\\
+        he & 喝 & to drink\\ \hline
+        \end{tabular}
+        \caption{The Mandarin Chinese four tones}
+    \end{centering}
+\end{table}
+\end{CJK}
+
+
+\begin{center}
+    \begin{CJK}{UTF8}{gbsn}
+        wo jian ta le - 我见他了 (I saw him)\\
+        wo shou bu liao - 我受不了 (I can't stand it anymore)\\
+        yin hang - 锒行 (bank)\\
+        zi xing che - 自行车 (bicycle)
+    \end{CJK}
+\end{center}
+
+\subsection{Our Goals}
+Given these difficulties with Pinyin, we decided that our goal for this project would be to implement a system that, given a text composed of unsegmented pinyin, would return the proper Chinese character conversion of that Pinyin. For example,
+\\
+\textbf{Input}:
+\begin{center}
+mamamama, matimama
+\end{center}
+\textbf{Output}:
+\begin{center}
+    \begin{CJK}{UTF8}{gbsn}
+            妈妈骂马, 马提妈妈\\
+        (Mother scolds the horse, the horse kicks Mother)
+    \end{CJK}
+\end{center}
+We would work with the Simplified version of Chinese, although we could likely easily adapt our program to account for Traditional form as well.
+
+\subsection*{Possible Methods}
+Before beginning with our implementation, we brainstormed several different methods that could be used to implement this program. Among the factors we took into account were efficiency (both for the coders and the users), speed of performance, and compatibility with the problem we were trying to solve.
+\subsection{TANGO Algorithm}
+Obviously one of our first considerations was the TANGO algorithm that we had looked at in class and for Problem Set 3. In fact, the TANGO algorithm itself was actually developed for use with Japanese \emph{kanji} segmentation. We considered perhaps that we could use this algorithm to help segment the Pinyin into the proper syllables, but ultimately decided that the algorithm fared better for simple segmentation rather than our goal, which was to both segment and probabilistically determine the correct character based on a given Pinyin.
+\subsection{Hidden Markov Model}
+The Hidden Markov Model was another consideration that we had, and it seemed to fit our goals quite well. The logic behind an HMM is that there are certain states in a process that are hidden to the the user(s); that is, we can see an output that could come from multiple different inputs, but we do not know the input from which the output is generated. What we do know, however, are the probabilities with which the possible input generates the output.
+\\\\
+This obviously aligns quite well with our goals regarding the project. Given that a certain Pinyin could come from multiple different characters (generally, at least four different possibilities -- at minimum!), we are trying to decipher which character is most likely to be the best fit based on the context of the sentence. The following diagram shows a rather simplified version of an HMM:
+%%\begin{center}
+%%\includegraphics[scale=0.6]{hmm.png}
+%%\end{center}
+Given the Pinyin ``ni", we would first try and figure out which character is most likely to be the correct one (there are actually far more than two possibilities, but we have only shown two here for simplicity's sake: \begin{CJK}{UTF8}{gbsn}你, which means ``you", and 泥, which means ``dirt" \end{CJK}). We would do the same for ``hao", with the two characters here being \begin{CJK}{UTF8}{gbsn}好, which means ``good", and 号, which means ``number" \end{CJK}.
+\\\\
+In the end, we would of course want the pairing \begin{CJK}{UTF8}{gbsn}你好\end{CJK}, which is the common way to say ``hello" in Chinese.
+
+\subsection{Segmental Hidden Markov Model}
+Another option we considered, but ultimately rejected, was the Segmented Hidden Markov Model. The SHMM is very similar to the HMM, but 
+
+\subsection*{Implementation}
+
+\subsection*{Results}
+    \subsection*{5.1 Test data}
+    \begin{center}
+        \begin{CJK}{UTF8}{gbsn}
+            爱丽丝靠着姐姐坐在河岸边很久了由于没有什么事情可做她开始感到厌倦她一次又次地瞧瞧姐姐正在读的那本书可是书里没有图画也没有对话爱丽丝想要是一本书里没有图画和对话那还有什么意思呢
+        \end{CJK}
+    \end{center}
+
+    \subsection*{5.2 Output}
+        \begin{center}
+        \begin{CJK}{UTF8}{gbsn}
+            \textcolor{black}{爱丽丝靠着姐姐坐在河岸边很久了\textcolor{red}{游}于没\textcolor{red}{游}什么\textcolor{red}{什}情可\textcolor{red}{坐}她开\textcolor{red}{什}感到厌倦她\textcolor{red}{易}次\textcolor{red}{游}次\textcolor{red}{第}瞧瞧姐姐正在读的那本书可\textcolor{red}{什}书\textcolor{red}{丽}没\textcolor{red}{游兔}画也没\textcolor{red}{游}对\textcolor{red}{画}爱丽丝想\textcolor{red}{么什易}本书\textcolor{red}{丽}没\textcolor{red}{游兔}画\textcolor{red}{河}对\textcolor{red}{画}那还\textcolor{red}{游}什么\textcolor{red}{易丝}呢}
+        \end{CJK}
+    \end{center}
+
+    \subsection*{5.3 Precision}
+        0.712643678161
+
+\subsection*{Analysis}
+
+\subsection*{Conclusion}
+
+\end{document}
